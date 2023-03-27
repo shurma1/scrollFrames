@@ -7,32 +7,6 @@ var isIntoGap = function (a, b, n) {
 var coef = function (scrollPosition, styleValue, nextStyleValue, key, nextKey) {
     return styleValue + ((nextStyleValue - styleValue) * (scrollPosition - key / 100) * (100 / (nextKey - key)));
 };
-var styleConstructor = function (styleName, from, to, key, nextKey, scrollPosition) {
-    var units = {
-        'px': { isInteger: true },
-        'em': { inInteger: false },
-        '%': { isInteger: false },
-        'vh': { isInteger: false },
-        'vw': { isInteger: false }
-    };
-    var thisUnit;
-    Object.keys(units).forEach(function (curentValue) {
-        if (from.includes(curentValue)) {
-            thisUnit = curentValue;
-        }
-    });
-    if (typeof (thisUnit) === 'undefined')
-        thisUnit = '';
-    from = from.replace(String(thisUnit), '');
-    to = to.replace(String(thisUnit), '');
-    if (styleName === 'transform') {
-        var fromStyleValue = from.split('(')[1].split(')')[0];
-        var toStyleValue = to.split('(')[1].split(')')[0];
-        console.log("".concat(coef(scrollPosition, Number(fromStyleValue), Number(toStyleValue), Number(key), Number(nextKey))).concat(thisUnit));
-        return "".concat(coef(scrollPosition, Number(fromStyleValue), Number(toStyleValue), Number(key), Number(nextKey))).concat(thisUnit);
-    }
-    return "".concat(coef(scrollPosition, Number(from), Number(to), Number(key), Number(nextKey))).concat(thisUnit);
-};
 var computeStyle = function (styles) {
     var params = [];
     for (var _i = 1; _i < arguments.length; _i++) {
@@ -59,7 +33,6 @@ var computeStyle = function (styles) {
                 staticTransformStyle[styleName].start.value = value;
                 staticTransformStyle[styleName].start.procent = procent;
             }
-            console.log(typeof (staticTransformStyle[styleName].end.value), value);
             if (staticTransformStyle[styleName].end.procent < procent * 100) {
                 staticTransformStyle[styleName].end.value = value;
                 staticTransformStyle[styleName].end.procent = procent;
@@ -86,6 +59,55 @@ var computeStyle = function (styles) {
             }
         }
     };
+    var styleConstructor = function (styleName, from, to, key, nextKey, scrollPosition) {
+        var units = {
+            'px': { isInteger: true },
+            'em': { inInteger: false },
+            '%': { isInteger: false },
+            'vh': { isInteger: false },
+            'vw': { isInteger: false }
+        };
+        var thisUnit;
+        Object.keys(units).forEach(function (curentValue) {
+            if (from.includes(curentValue)) {
+                thisUnit = curentValue;
+            }
+        });
+        if (typeof (thisUnit) === 'undefined')
+            thisUnit = '';
+        from = from.replace(String(thisUnit), '');
+        to = to.replace(String(thisUnit), '');
+        if (styleName === 'transform') {
+            var fromStyleValue = from.split('(')[1].split(')')[0];
+            var toStyleValue = to.split('(')[1].split(')')[0];
+            if (typeof (animateTransformStyle[from.split('(')[0]]) === 'undefined') {
+                animateTransformStyle[from.split('(')[0]] = {
+                    from: 0,
+                    to: 100,
+                    value: ''
+                };
+            }
+            if (animateTransformStyle[from.split('(')[0]]['to'] - animateTransformStyle[from.split('(')[0]]['from'] >= parseInt(nextKey) - parseInt(key)) {
+                animateTransformStyle[from.split('(')[0]]['value'] = "".concat(coef(scrollPosition, Number(fromStyleValue), Number(toStyleValue), Number(key), Number(nextKey))).concat(thisUnit);
+                animateTransformStyle[from.split('(')[0]]['from'] = parseInt(key);
+                animateTransformStyle[from.split('(')[0]]['to'] = parseInt(nextKey);
+            }
+        }
+        else {
+            if (typeof (animateStyle[styleName]) === 'undefined') {
+                animateStyle[styleName] = {
+                    from: 0,
+                    to: 100,
+                    value: ''
+                };
+            }
+            if (animateStyle[styleName]['to'] - animateStyle[styleName]['from'] >= parseInt(nextKey) - parseInt(key)) {
+                animateStyle[styleName]['value'] = "".concat(coef(scrollPosition, Number(from), Number(to), Number(key), Number(nextKey))).concat(thisUnit);
+                animateStyle[styleName]['from'] = parseInt(key);
+                animateStyle[styleName]['to'] = parseInt(nextKey);
+            }
+        }
+    };
     if (typeof (styles) !== 'undefined') {
         for (var _a = 0, _b = Object.entries(styles); _a < _b.length; _a++) {
             var _c = _b[_a], key = _c[0], value = _c[1];
@@ -106,11 +128,11 @@ var computeStyle = function (styles) {
                                                 if (isIntoGap(Number(key) / 100, Number(nextKey) / 100, params[0])) {
                                                     if (styleName === 'transform') {
                                                         if (styleValue.split('(')[0] === nextStyleValue.split('(')[0]) {
-                                                            animateTransformStyle[styleValue.split('(')[0]] = styleConstructor(styleName, styleValue, nextStyleValue, key, nextKey, params[0]);
+                                                            styleConstructor(styleName, styleValue, nextStyleValue, key, nextKey, params[0]);
                                                         }
                                                     }
                                                     else {
-                                                        animateStyle[styleName] = styleConstructor(styleName, styleValue, nextStyleValue, key, nextKey, params[0]);
+                                                        styleConstructor(styleName, styleValue, nextStyleValue, key, nextKey, params[0]);
                                                     }
                                                 }
                                                 else {
@@ -147,34 +169,25 @@ var computeStyle = function (styles) {
     }
     for (var _x = 0, _y = Object.entries(animateStyle); _x < _y.length; _x++) {
         var _z = _y[_x], key = _z[0], value = _z[1];
-        computedStyle[key] = value;
+        computedStyle[key] = value['value'];
     }
-    for (var _0 = 0, _1 = Object.entries(animateStyle); _0 < _1.length; _0++) {
+    for (var _0 = 0, _1 = Object.entries(staticTransformStyle); _0 < _1.length; _0++) {
         var _2 = _1[_0], key = _2[0], value = _2[1];
-        computedStyle[key] = value;
-    }
-    for (var _3 = 0, _4 = Object.entries(staticTransformStyle); _3 < _4.length; _3++) {
-        var _5 = _4[_3], key = _5[0], value = _5[1];
-        console.log('test:', animateTransformStyle[key]);
         if (typeof (animateTransformStyle[key]) === 'undefined') {
             if (Number(value['start']['procent']) / 100 > params[0]) {
-                animateTransformStyle[key] = value['start']['value'];
+                animateTransformStyle[key] = { value: value['start']['value'] };
             }
             if (Number(value['end']['procent']) / 100 < params[0]) {
-                animateTransformStyle[key] = value['end']['value'];
+                animateTransformStyle[key] = { value: value['end']['value'] };
             }
         }
     }
     var transform = '';
-    for (var _6 = 0, _7 = Object.entries(animateTransformStyle); _6 < _7.length; _6++) {
-        var _8 = _7[_6], key = _8[0], value = _8[1];
-        transform += "".concat(key, "(").concat(value, ")");
+    for (var _3 = 0, _4 = Object.entries(animateTransformStyle); _3 < _4.length; _3++) {
+        var _5 = _4[_3], key = _5[0], value = _5[1];
+        transform += "".concat(key, "(").concat(value['value'], ")");
     }
     computedStyle['transform'] = transform;
-    console.log('animateTransformStyle: ', animateTransformStyle);
-    console.log('animateStyle: ', animateStyle);
-    console.log('staticStyle: ', staticStyle);
-    console.log('staticTransformStyle: ', staticTransformStyle);
     return computedStyle;
 };
 exports.default = computeStyle;

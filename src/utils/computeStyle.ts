@@ -15,6 +15,16 @@ interface NewStyle{
   [key: string]: StyleName
 }
 
+interface StyleAnimateParams{
+  from?: number,
+  to?: number,
+  value: string
+}
+
+
+interface NewAnimateStyle{
+  [key: string]: StyleAnimateParams
+}
 
 
 const isIntoGap = (a: number, b: number, n: number): boolean => {
@@ -26,45 +36,12 @@ const coef = (scrollPosition: number, styleValue: number, nextStyleValue: number
   return styleValue + ((nextStyleValue - styleValue) * (scrollPosition-key/100)*(100/(nextKey - key)));
 }
 
-const styleConstructor = (styleName: string, from: string, to: string, key: string, nextKey: string, scrollPosition: number) => {
-  const units = {
-    'px': { isInteger: true },
-    'em': { inInteger: false},
-    '%': {isInteger: false},
-    'vh': {isInteger: false},
-    'vw': {isInteger: false}
-
-  } 
-    let thisUnit;
-    Object.keys(units).forEach((curentValue) => {
-      if(from.includes(curentValue) ){
-        thisUnit = curentValue;
-      }
-    });
-
-    if (typeof(thisUnit) === 'undefined') thisUnit = '';
-    
-    from = from.replace(String(thisUnit), '');
-    to = to.replace(String(thisUnit), '');
-
-    if(styleName === 'transform'){
-      let fromStyleValue = from.split('(')[1].split(')')[0];
-      let toStyleValue = to.split('(')[1].split(')')[0];
-      
-      console.log(`${coef(scrollPosition, Number(fromStyleValue), Number(toStyleValue), Number(key), Number(nextKey) )}${thisUnit}`);
-      return `${coef(scrollPosition, Number(fromStyleValue), Number(toStyleValue), Number(key), Number(nextKey) )}${thisUnit}`
-
-    }
-    
-    return `${coef(scrollPosition, Number(from), Number(to), Number(key), Number(nextKey) )}${thisUnit}`;
-} 
-
 
 const computeStyle = (styles: object | undefined, ...params: any[]): Style => {
   const computedStyle: Style = {};
 
-  const animateStyle: Style = {};
-  const animateTransformStyle: Style = {};
+  const animateStyle: NewAnimateStyle = {};
+  const animateTransformStyle: NewAnimateStyle = {};
   const staticStyle: NewStyle = {};
   const staticTransformStyle: NewStyle  = {};
 
@@ -84,7 +61,6 @@ const computeStyle = (styles: object | undefined, ...params: any[]): Style => {
         staticTransformStyle[styleName].start.value = value;
         staticTransformStyle[styleName].start.procent = procent;
       }
-      console.log(typeof(staticTransformStyle[styleName].end.value), value)
       if(staticTransformStyle[styleName].end.procent < procent*100){
         staticTransformStyle[styleName].end.value = value;
         staticTransformStyle[styleName].end.procent = procent;
@@ -115,6 +91,59 @@ const computeStyle = (styles: object | undefined, ...params: any[]): Style => {
     }
   }
 
+
+  const styleConstructor = (styleName: string, from: string, to: string, key: string, nextKey: string, scrollPosition: number) => {
+    const units = {
+      'px': { isInteger: true },
+      'em': { inInteger: false},
+      '%': {isInteger: false},
+      'vh': {isInteger: false},
+      'vw': {isInteger: false}
+  
+    } 
+      let thisUnit;
+      Object.keys(units).forEach((curentValue) => {
+        if(from.includes(curentValue) ){
+          thisUnit = curentValue;
+        }
+      });
+  
+      if (typeof(thisUnit) === 'undefined') thisUnit = '';
+      
+      from = from.replace(String(thisUnit), '');
+      to = to.replace(String(thisUnit), '');
+
+      if(styleName === 'transform'){
+        let fromStyleValue = from.split('(')[1].split(')')[0];
+        let toStyleValue = to.split('(')[1].split(')')[0];
+        if(typeof(animateTransformStyle[from.split('(')[0] as keyof NewAnimateStyle]) === 'undefined'){
+          animateTransformStyle[from.split('(')[0] as keyof NewAnimateStyle] = {
+            from: 0,
+            to: 100,
+            value: ''
+          }
+        }
+        if(animateTransformStyle[from.split('(')[0] as keyof NewAnimateStyle]['to']! - animateTransformStyle[from.split('(')[0] as keyof NewAnimateStyle]['from']! >=  parseInt(nextKey)- parseInt(key)){
+          animateTransformStyle[from.split('(')[0] as keyof NewAnimateStyle]['value'] = `${coef(scrollPosition, Number(fromStyleValue), Number(toStyleValue), Number(key), Number(nextKey) )}${thisUnit}`;
+          animateTransformStyle[from.split('(')[0] as keyof NewAnimateStyle]['from'] = parseInt(key);
+          animateTransformStyle[from.split('(')[0] as keyof NewAnimateStyle]['to'] = parseInt(nextKey);
+        }
+      }
+      else{
+        if(typeof(animateStyle[styleName as keyof NewAnimateStyle]) === 'undefined'){
+          animateStyle[styleName as keyof NewAnimateStyle] = {
+            from: 0,
+            to: 100,
+            value: ''
+          }
+        }
+        if(animateStyle[styleName as keyof NewAnimateStyle]['to']! - animateStyle[styleName as keyof NewAnimateStyle]['from']! >= parseInt(nextKey) - parseInt(key)){
+          animateStyle[styleName as keyof NewAnimateStyle]['value'] = `${coef(scrollPosition, Number(from), Number(to), Number(key), Number(nextKey) )}${thisUnit}`;
+          animateStyle[styleName as keyof NewAnimateStyle]['from'] = parseInt(key);
+          animateStyle[styleName as keyof NewAnimateStyle]['to']= parseInt(nextKey);
+        }
+      }
+  } 
   if(typeof(styles) !== 'undefined'){
     for( const [key, value] of Object.entries(styles) ){
       for ( const [styleName, styleArray] of Object.entries(value) ){
@@ -129,11 +158,11 @@ const computeStyle = (styles: object | undefined, ...params: any[]): Style => {
                         if( isIntoGap(Number(key)/100, Number(nextKey)/100, params[0]) ){
                             if(styleName === 'transform'){
                               if(styleValue.split('(')[0] === nextStyleValue.split('(')[0]){
-                                animateTransformStyle[styleValue.split('(')[0] as keyof Style] = styleConstructor(styleName, styleValue, nextStyleValue, key, nextKey, params[0]);
+                                styleConstructor(styleName, styleValue, nextStyleValue, key, nextKey, params[0]);
                               }  
                             }
                             else{
-                              animateStyle[styleName as keyof Style] = styleConstructor(styleName, styleValue, nextStyleValue, key, nextKey, params[0]);
+                              styleConstructor(styleName, styleValue, nextStyleValue, key, nextKey, params[0]);
                             }
                           
                         }
@@ -163,52 +192,34 @@ const computeStyle = (styles: object | undefined, ...params: any[]): Style => {
     }
   }
   for( const [key, value] of Object.entries(staticStyle) ){
-    
-      if(Number(value['start']['procent'])/100 > params[0]){
-        computedStyle[key as keyof Style] = value['start']['value'];
-      }
-      if(Number(value['end']['procent'])/100 < params[0]){
-        computedStyle[key as keyof Style] = value['end']['value'];
-      }
-    
+    if(Number(value['start']['procent'])/100 > params[0]){
+      computedStyle[key as keyof Style] = value['start']['value'];
+    }
+    if(Number(value['end']['procent'])/100 < params[0]){
+      computedStyle[key as keyof Style] = value['end']['value'];
+    }
   }
   for( const [key, value] of Object.entries(animateStyle) ){
-    computedStyle[key as keyof Style] = value;
-  }
-  for( const [key, value] of Object.entries(animateStyle) ){
-    computedStyle[key as keyof Style] = value;
+    computedStyle[key as keyof Style] = value['value'];
   }
 
   for( const [key, value] of Object.entries(staticTransformStyle) ){
-    
-      console.log('test:', animateTransformStyle[key as keyof Style])
-      if(typeof(animateTransformStyle[key as keyof Style]) === 'undefined'){
-        if(Number(value['start']['procent'])/100 > params[0]){
-        
-          animateTransformStyle[key as keyof Style] = value['start']['value'];
-        }
-        if(Number(value['end']['procent'])/100 < params[0]){
-          animateTransformStyle[key as keyof Style] = value['end']['value'];
-        }
+    if(typeof(animateTransformStyle[key as keyof Style]) === 'undefined'){
+      if(Number(value['start']['procent'])/100 > params[0]){
+      
+        animateTransformStyle[key as keyof NewAnimateStyle] = {value: value['start']['value']};
       }
-    
+      if(Number(value['end']['procent'])/100 < params[0]){
+        animateTransformStyle[key as keyof NewAnimateStyle] = {value: value['end']['value']};
+      }
+    }
   }
   let transform = '';
   for( const [key, value] of Object.entries(animateTransformStyle) ){
-    transform+= `${key}(${value})`
-
+    transform+= `${key}(${value['value']})`
   }
   computedStyle['transform'] = transform;
-  
-
-  console.log('animateTransformStyle: ', animateTransformStyle)
-  console.log('animateStyle: ', animateStyle)
-  console.log('staticStyle: ', staticStyle)
-  console.log('staticTransformStyle: ', staticTransformStyle)
-
   return computedStyle;
-  
-  
   
 };
 
